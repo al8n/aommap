@@ -3,11 +3,10 @@ members = [
   "aommap"
 ]
 
-
 [workspace.package]
 version = "0.0.0"
 edition = "2021"
 repository = "https://github.com/al8n/aommap"
 homepage = "https://github.com/al8n/aommap"
 license = "Apache-2.0/MIT"
-
+description = "Append only lock-free memory map implementation"
