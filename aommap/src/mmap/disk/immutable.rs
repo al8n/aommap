@@ -1,9 +1,8 @@
-use std::fs::OpenOptions;
-use crate::error::{Result, Error};
+use crate::error::{Error, Result};
 use memmapix::Mmap as Map;
+use std::fs::OpenOptions;
 
 use super::Inner;
-
 
 /// Read-only memory map.
 #[derive(Debug)]
@@ -23,9 +22,15 @@ impl Mmap {
       let meta = file.metadata().map_err(Error::IO)?;
       let len = meta.len() as usize;
       // Safety: we just open the file, this file is valid.
-      unsafe { Map::map(&file) }.map(|map| Self { inner: Inner::new(file, len), map, len }).map_err(Error::Mmap)
+      unsafe { Map::map(&file) }
+        .map(|map| Self {
+          inner: Inner::new(file, len),
+          map,
+          len,
+        })
+        .map_err(Error::Mmap)
     })
-  } 
+  }
 }
 
 impl AsRef<[u8]> for Mmap {

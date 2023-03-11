@@ -1,7 +1,6 @@
-use core::sync::atomic::AtomicUsize;
 use crate::error::{Error, Result};
-use bytes::{BytesMut, BufMut};
-
+use bytes::{BufMut, BytesMut};
+use core::sync::atomic::AtomicUsize;
 
 pub struct MmapMut {
   ptr: *mut BytesMut,
@@ -11,7 +10,11 @@ pub struct MmapMut {
 
 impl MmapMut {
   pub fn new(size: usize) -> Self {
-    Self { ptr: Box::into_raw(Box::new(BytesMut::with_capacity(size))), cursor: AtomicUsize::new(0), cap: size }
+    Self {
+      ptr: Box::into_raw(Box::new(BytesMut::with_capacity(size))),
+      cursor: AtomicUsize::new(0),
+      cap: size,
+    }
   }
 
   /// This method is concurrent-safe, will write all of the data in the buf.
@@ -21,10 +24,12 @@ impl MmapMut {
     if buf.len() > remaining {
       return Err(Error::BufTooLarge);
     }
-    self.cursor.fetch_add(buf.len(), core::sync::atomic::Ordering::SeqCst);
+    self
+      .cursor
+      .fetch_add(buf.len(), core::sync::atomic::Ordering::SeqCst);
 
     let bytes = unsafe { &mut *self.ptr };
-    bytes.put_slice(buf); 
+    bytes.put_slice(buf);
     Ok(())
   }
 }

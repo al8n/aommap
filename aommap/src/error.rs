@@ -7,4 +7,3 @@ pub use rust::*;
 mod wasm;
 #[cfg(not(feature = "std"))]
 pub use wasm::*;
-
