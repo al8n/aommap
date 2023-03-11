@@ -1,13 +1,13 @@
 [workspace]
 members = [
-  "crates/*"
+  "aommap"
 ]
 
 
 [workspace.package]
 version = "0.0.0"
 edition = "2021"
-repository = "https://github.com/al8n/crates"
-homepage = "https://github.com/al8n/crates"
+repository = "https://github.com/al8n/aommap"
+homepage = "https://github.com/al8n/aommap"
 license = "Apache-2.0/MIT"
 

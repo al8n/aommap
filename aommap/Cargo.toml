@@ -1,0 +1,18 @@
+[package]
+name = "aommap"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[features]
+default = ["std"]
+std = ["bytes/default", "memmapix"]
+
+[dependencies]
+bytes = { version = "1.4", default-features = false }
+memmapix = { version = "0.7", optional = true }
+
+
+
