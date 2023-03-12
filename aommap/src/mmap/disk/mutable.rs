@@ -1,5 +1,5 @@
 use crate::error::{Error, Result};
-use core::sync::atomic::Ordering;
+use core::{ops::RangeBounds, sync::atomic::Ordering};
 use memmapix::MmapMut as Map;
 use std::fs::OpenOptions;
 
@@ -71,12 +71,43 @@ impl MmapMut {
   }
 
   #[inline]
-  pub fn slice(&self, offset: usize, size: usize) -> Result<&[u8]> {
+  pub fn slice(&self, range: impl RangeBounds<usize>) -> &[u8] {
+    use core::ops::Bound;
+
+    const EMPTY: &[u8] = &[];
+
     let len = self.len();
-    if offset + size > len {
-      return Err(Error::BufTooLarge);
+
+    let begin = match range.start_bound() {
+      Bound::Included(&n) => n,
+      Bound::Excluded(&n) => n + 1,
+      Bound::Unbounded => 0,
+    };
+
+    let end = match range.end_bound() {
+      Bound::Included(&n) => n.checked_add(1).expect("out of range"),
+      Bound::Excluded(&n) => n,
+      Bound::Unbounded => len,
+    };
+
+    assert!(
+      begin <= end,
+      "range start must not be greater than end: {:?} <= {:?}",
+      begin,
+      end,
+    );
+    assert!(
+      end <= len,
+      "range end out of bounds: {:?} <= {:?}",
+      end,
+      len,
+    );
+
+    if end == begin {
+      return EMPTY;
     }
-    Ok(&self.map[offset..offset + len])
+
+    &self.map[begin..end]
   }
 
   /// This method is concurrent-safe, will write all of the data in the buf.

@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use bytes::{BufMut, BytesMut};
-use core::sync::atomic::AtomicUsize;
+use core::{ops::RangeBounds, sync::atomic::AtomicUsize};
 
 pub struct MmapMut {
   ptr: *mut BytesMut,
@@ -18,13 +18,44 @@ impl MmapMut {
   }
 
   #[inline]
-  pub fn slice(&self, offset: usize, size: usize) -> Result<&[u8]> {
-    let len = self.cursor.load(core::sync::atomic::Ordering::Relaxed);
-    if offset + size > len {
-      return Err(Error::BufTooLarge);
+  pub fn slice(&self, range: impl RangeBounds<usize>) -> &[u8] {
+    use core::ops::Bound;
+
+    const EMPTY: &[u8] = &[];
+
+    let len = self.cursor.load(core::sync::atomic::Ordering::SeqCst);
+
+    let begin = match range.start_bound() {
+      Bound::Included(&n) => n,
+      Bound::Excluded(&n) => n + 1,
+      Bound::Unbounded => 0,
+    };
+
+    let end = match range.end_bound() {
+      Bound::Included(&n) => n.checked_add(1).expect("out of range"),
+      Bound::Excluded(&n) => n,
+      Bound::Unbounded => len,
+    };
+
+    assert!(
+      begin <= end,
+      "range start must not be greater than end: {:?} <= {:?}",
+      begin,
+      end,
+    );
+    assert!(
+      end <= len,
+      "range end out of bounds: {:?} <= {:?}",
+      end,
+      len,
+    );
+
+    if end == begin {
+      return EMPTY;
     }
+
     let bytes = unsafe { &*self.ptr };
-    Ok(&bytes[offset..offset + len])
+    &bytes[begin..end]
   }
 
   /// This method is concurrent-safe, will write all of the data in the buf.
