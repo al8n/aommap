@@ -18,6 +18,7 @@ pub enum Error {
   Mprotect(StdError),
   BufTooLarge,
   IO(StdError),
+  EOF,
 }
 
 impl From<StdError> for Error {
@@ -29,6 +30,7 @@ impl From<StdError> for Error {
 impl core::fmt::Display for Error {
   fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
     match self {
+      Self::EOF => write!(f, "EOF: need to remmap"),
       Self::BufTooLarge => write!(f, "Buffer is too large"),
       Self::Flush(e) => write!(f, "Failed to flush: {}", e),
       Self::IO(e) => write!(f, "{}", e),

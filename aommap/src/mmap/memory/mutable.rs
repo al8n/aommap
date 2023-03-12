@@ -61,13 +61,12 @@ impl MmapMut {
   /// This method is concurrent-safe, will write all of the data in the buf.
   #[inline]
   pub fn write(&self, buf: &[u8]) -> Result<()> {
-    let remaining = self.cap - self.cursor.load(core::sync::atomic::Ordering::SeqCst);
+    let buf_len = buf.len();
+    let cursor = self.cursor.fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
+    let remaining = self.cap - cursor;
     if buf.len() > remaining {
-      return Err(Error::BufTooLarge);
+      return Err(Error::EOF);
     }
-    self
-      .cursor
-      .fetch_add(buf.len(), core::sync::atomic::Ordering::SeqCst);
 
     let bytes = unsafe { &mut *self.ptr };
     bytes.put_slice(buf);
@@ -77,13 +76,11 @@ impl MmapMut {
   /// This method is concurrent-safe, will return a mutable slice for you to write data.
   #[inline]
   pub fn writable_slice(&self, buf_len: usize) -> Result<&mut BytesMut> {
-    let remaining = self.cap - self.cursor.load(core::sync::atomic::Ordering::SeqCst);
+    let cursor = self.cursor.fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst); 
+    let remaining = self.cap - cursor;
     if buf_len > remaining {
-      return Err(Error::BufTooLarge);
+      return Err(Error::EOF);
     }
-    self
-      .cursor
-      .fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
 
     let bytes = unsafe { &mut *self.ptr };
     Ok(bytes)
