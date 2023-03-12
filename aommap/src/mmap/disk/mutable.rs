@@ -70,6 +70,15 @@ impl MmapMut {
     self.inner.cursor.load(Ordering::Relaxed)
   }
 
+  #[inline]
+  pub fn slice(&self, offset: usize, size: usize) -> Result<&[u8]> {
+    let len = self.len();
+    if offset + size > len {
+      return Err(Error::BufTooLarge);
+    }
+    Ok(&self.map[offset..offset + len])
+  }
+
   /// This method is concurrent-safe, will write all of the data in the buf.
   #[inline]
   pub fn write(&self, buf: &[u8]) -> Result<()> {
