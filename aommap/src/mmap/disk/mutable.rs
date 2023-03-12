@@ -88,6 +88,22 @@ impl MmapMut {
     Ok(())
   }
 
+  /// This method is concurrent-safe, will return a mutable slice for you to write data.
+  #[inline]
+  pub fn writable_slice(&self, buf_len: usize) -> Result<&mut [u8]> {
+    let cursor = self.inner.cursor.load(Ordering::SeqCst);
+    let len = self.map.len();
+    let remaining = len - cursor;
+    if buf_len >= remaining {
+      return Err(Error::BufTooLarge);
+    }
+    self.inner.cursor.fetch_add(buf_len, Ordering::SeqCst);
+
+    // Safety: we have a cursor to make sure there is no data race for the same range
+    let slice = unsafe { core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, len) };
+    Ok(&mut slice[cursor..cursor + buf_len])
+  }
+
   #[inline]
   pub fn flush(&self) -> Result<()> {
     self.map.flush().map_err(Error::Flush)

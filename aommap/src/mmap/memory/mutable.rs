@@ -32,6 +32,21 @@ impl MmapMut {
     bytes.put_slice(buf);
     Ok(())
   }
+
+  /// This method is concurrent-safe, will return a mutable slice for you to write data.
+  #[inline]
+  pub fn writable_slice(&self, buf_len: usize) -> Result<&mut BytesMut> {
+    let remaining = self.cap - self.cursor.load(core::sync::atomic::Ordering::SeqCst);
+    if buf_len > remaining {
+      return Err(Error::BufTooLarge);
+    }
+    self
+      .cursor
+      .fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
+
+    let bytes = unsafe { &mut *self.ptr };
+    Ok(bytes)
+  }
 }
 
 impl Drop for MmapMut {
