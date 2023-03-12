@@ -58,9 +58,9 @@ impl MmapMut {
     &bytes[begin..end]
   }
 
-  /// This method is concurrent-safe, will write all of the data in the buf.
+  /// This method is concurrent-safe, will write all of the data in the buf, returns the offset of the data in the file.
   #[inline]
-  pub fn write(&self, buf: &[u8]) -> Result<()> {
+  pub fn write(&self, buf: &[u8]) -> Result<usize> {
     let buf_len = buf.len();
     let cursor = self.cursor.fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
     let remaining = self.cap - cursor;
@@ -70,7 +70,7 @@ impl MmapMut {
 
     let bytes = unsafe { &mut *self.ptr };
     bytes.put_slice(buf);
-    Ok(())
+    Ok(cursor)
   }
 
   /// This method is concurrent-safe, will return a mutable slice for you to write data.

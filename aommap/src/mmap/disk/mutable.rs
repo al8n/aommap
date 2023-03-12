@@ -116,9 +116,9 @@ impl MmapMut {
     &self.map[begin..end]
   }
 
-  /// This method is concurrent-safe, will write all of the data in the buf.
+  /// This method is concurrent-safe, will write all of the data in the buf, returns the offset of the data in the file.
   #[inline]
-  pub fn write(&self, buf: &[u8]) -> Result<()> {
+  pub fn write(&self, buf: &[u8]) -> Result<usize> {
     let buf_len = buf.len();
     let cursor = self.inner.cursor.fetch_add(buf_len, Ordering::SeqCst);
     let len = self.map.len();
@@ -130,12 +130,12 @@ impl MmapMut {
     // Safety: we have a cursor to make sure there is no data race for the same range
     let slice = unsafe { core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, len) };
     slice[cursor..cursor + buf.len()].copy_from_slice(buf);
-    Ok(())
+    Ok(cursor)
   }
 
-  /// This method is concurrent-safe, will return a mutable slice for you to write data.
+  /// This method is concurrent-safe, will return an offset and a mutable slice for you to write data.
   #[inline]
-  pub fn writable_slice(&self, buf_len: usize) -> Result<&mut [u8]> {
+  pub fn writable_slice(&self, buf_len: usize) -> Result<(usize, &mut [u8])> {
     let cursor = self.inner.cursor.fetch_add(buf_len, Ordering::SeqCst);
     let len = self.map.len();
     let remaining = len - cursor;
@@ -145,7 +145,7 @@ impl MmapMut {
 
     // Safety: we have a cursor to make sure there is no data race for the same range
     let slice = unsafe { core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, len) };
-    Ok(&mut slice[cursor..cursor + buf_len])
+    Ok((cursor, &mut slice[cursor..cursor + buf_len]))
   }
 
   #[inline]
