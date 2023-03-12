@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use core::{ops::RangeBounds, sync::atomic::Ordering};
-use memmapix::MmapMut as Map;
+use memmapix::{MmapMut as Map, MmapOptions};
 use std::fs::OpenOptions;
 
 use super::Inner;
@@ -14,26 +14,26 @@ pub struct MmapMut {
 impl MmapMut {
   /// Create a new file if the file is not exist and mmap it.
   #[inline]
-  pub fn create<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+  pub fn create<P: AsRef<std::path::Path>>(path: P, max_size: usize) -> Result<Self> {
     let mut opts = OpenOptions::new();
     opts.create(true).read(true).write(true);
-    Self::open_in(path.as_ref(), opts)
+    Self::open_in(path.as_ref(), opts, max_size)
   }
 
   /// Create a new file and mmap it.
   #[inline]
-  pub fn create_new<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+  pub fn create_new<P: AsRef<std::path::Path>>(path: P, max_size: usize) -> Result<Self> {
     let mut opts = OpenOptions::new();
     opts.create_new(true).read(true).write(true);
-    Self::open_in(path.as_ref(), opts)
+    Self::open_in(path.as_ref(), opts, max_size)
   }
 
   /// Open a existing file and mmap it.
   #[inline]
-  pub fn open<P: AsRef<std::path::Path>>(path: P) -> Result<Self> {
+  pub fn open<P: AsRef<std::path::Path>>(path: P, max_size: usize) -> Result<Self> {
     let mut opts = OpenOptions::new();
     opts.create(false).read(true).write(true);
-    Self::open_in(path.as_ref(), opts)
+    Self::open_in(path.as_ref(), opts, max_size)
   }
 
   /// Open a file with given options and mmap it.
@@ -41,17 +41,20 @@ impl MmapMut {
   pub fn open_with_options<P: AsRef<std::path::Path>>(
     path: P,
     open_opts: OpenOptions,
+    max_size: usize,
   ) -> Result<Self> {
-    Self::open_in(path.as_ref(), open_opts)
+    Self::open_in(path.as_ref(), open_opts, max_size)
   }
 
   #[inline]
-  fn open_in(path: &std::path::Path, open_opts: OpenOptions) -> Result<Self> {
+  fn open_in(path: &std::path::Path, open_opts: OpenOptions, max_size: usize) -> Result<Self> {
     open_opts.open(path).map_err(From::from).and_then(|file| {
       let meta = file.metadata().map_err(Error::IO)?;
       let len = meta.len() as usize;
+      let mut opts = MmapOptions::new();
+      opts.len(max_size);
       // Safety: we just open the file, this file is valid.
-      unsafe { Map::map_mut(&file) }
+      unsafe { opts.map_mut(&file) }
         .map(|map| Self {
           inner: Inner::new(file, len),
           map,
