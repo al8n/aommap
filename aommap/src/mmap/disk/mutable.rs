@@ -51,6 +51,9 @@ impl MmapMut {
     open_opts.open(path).map_err(From::from).and_then(|file| {
       let meta = file.metadata().map_err(Error::IO)?;
       let len = meta.len() as usize;
+      if len < max_size {
+        file.set_len(max_size as u64).map_err(Error::IO)?;
+      }
       let mut opts = MmapOptions::new();
       opts.len(max_size);
       // Safety: we just open the file, this file is valid.
