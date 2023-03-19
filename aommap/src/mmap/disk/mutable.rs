@@ -1,5 +1,8 @@
 use crate::error::{Error, Result};
-use core::{ops::RangeBounds, sync::atomic::Ordering};
+use core::{
+  ops::{DerefMut, RangeBounds},
+  sync::atomic::Ordering,
+};
 use memmapix::{MmapMut as Map, MmapOptions};
 use std::fs::OpenOptions;
 
@@ -9,6 +12,7 @@ use super::Inner;
 pub struct MmapMut {
   inner: Inner,
   map: Map,
+  cap: usize,
 }
 
 impl MmapMut {
@@ -61,6 +65,7 @@ impl MmapMut {
         .map(|map| Self {
           inner: Inner::new(file, len),
           map,
+          cap: max_size,
         })
         .map_err(Error::Mmap)
     })
@@ -123,10 +128,10 @@ impl MmapMut {
     let cursor = self.inner.cursor.fetch_add(buf_len, Ordering::SeqCst);
     let len = self.map.len();
     let remaining = len - cursor;
-    if buf_len >= remaining {
+    if buf_len > remaining {
       return Err(Error::EOF);
     }
-  
+
     // Safety: we have a cursor to make sure there is no data race for the same range
     let slice = unsafe { core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, len) };
     slice[cursor..cursor + buf.len()].copy_from_slice(buf);
@@ -135,17 +140,26 @@ impl MmapMut {
 
   /// This method is concurrent-safe, will return an offset and a mutable slice for you to write data.
   #[inline]
-  pub fn writable_slice(&self, buf_len: usize) -> Result<(usize, &mut [u8])> {
+  pub fn bytes_mut(&self, buf_len: usize) -> Result<(usize, &mut [u8])> {
     let cursor = self.inner.cursor.fetch_add(buf_len, Ordering::SeqCst);
     let len = self.map.len();
     let remaining = len - cursor;
-    if buf_len >= remaining {
+    if buf_len > remaining {
       return Err(Error::EOF);
     }
 
     // Safety: we have a cursor to make sure there is no data race for the same range
     let slice = unsafe { core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, len) };
     Ok((cursor, &mut slice[cursor..cursor + buf_len]))
+  }
+
+  /// Returns the underlying mutable slice of the mmap.
+  ///
+  /// # Safety
+  /// This method is not thread-safe.
+  #[inline]
+  pub unsafe fn underlying_slice_mut(&self) -> &mut [u8] {
+    core::slice::from_raw_parts_mut(self.map.as_ptr() as *mut u8, self.cap)
   }
 
   #[inline]

@@ -62,7 +62,9 @@ impl MmapMut {
   #[inline]
   pub fn write(&self, buf: &[u8]) -> Result<usize> {
     let buf_len = buf.len();
-    let cursor = self.cursor.fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
+    let cursor = self
+      .cursor
+      .fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
     let remaining = self.cap - cursor;
     if buf.len() > remaining {
       return Err(Error::EOF);
@@ -75,8 +77,10 @@ impl MmapMut {
 
   /// This method is concurrent-safe, will return a mutable slice for you to write data.
   #[inline]
-  pub fn writable_slice(&self, buf_len: usize) -> Result<&mut BytesMut> {
-    let cursor = self.cursor.fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst); 
+  pub fn bytes_mut(&self, buf_len: usize) -> Result<&mut BytesMut> {
+    let cursor = self
+      .cursor
+      .fetch_add(buf_len, core::sync::atomic::Ordering::SeqCst);
     let remaining = self.cap - cursor;
     if buf_len > remaining {
       return Err(Error::EOF);
@@ -84,6 +88,15 @@ impl MmapMut {
 
     let bytes = unsafe { &mut *self.ptr };
     Ok(bytes)
+  }
+
+  /// Returns the underlying mutable `BytesMut` of the mmap.
+  ///
+  /// # Safety
+  /// This method is not thread-safe
+  #[inline]
+  pub unsafe fn underlying_slice_mut(&self) -> &mut BytesMut {
+    &mut *self.ptr
   }
 }
 
