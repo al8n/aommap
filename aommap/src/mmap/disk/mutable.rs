@@ -1,6 +1,6 @@
 use crate::error::{Error, Result};
 use core::{
-  ops::{DerefMut, RangeBounds},
+  ops::RangeBounds,
   sync::atomic::Ordering,
 };
 use memmapix::{MmapMut as Map, MmapOptions};
