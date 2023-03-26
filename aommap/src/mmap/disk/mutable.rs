@@ -1,8 +1,5 @@
 use crate::error::{Error, Result};
-use core::{
-  ops::RangeBounds,
-  sync::atomic::Ordering,
-};
+use core::{ops::RangeBounds, sync::atomic::Ordering};
 use memmapix::{MmapMut as Map, MmapOptions};
 use std::fs::OpenOptions;
 
@@ -178,11 +175,7 @@ impl MmapMut {
     self
       .map
       .make_read_only()
-      .map(|map| super::immutable::Mmap {
-        inner: self.inner,
-        map,
-        len,
-      })
+      .map(|map| super::immutable::Mmap::new(self.inner, map, len))
       .map_err(Error::Mmap)
   }
 }
