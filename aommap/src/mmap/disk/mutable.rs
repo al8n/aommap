@@ -13,11 +13,11 @@ pub struct MmapMut {
 }
 
 impl MmapMut {
-  /// Create a new file if the file is not exist and mmap it.
+  /// Create a file if the file is not exist, otherwise truncate file. Then, mmap it.
   #[inline]
   pub fn create<P: AsRef<std::path::Path>>(path: P, max_size: usize) -> Result<Self> {
     let mut opts = OpenOptions::new();
-    opts.create(true).read(true).write(true);
+    opts.create(true).read(true).write(true).truncate(true);
     Self::open_in(path.as_ref(), opts, max_size)
   }
 
